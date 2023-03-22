@@ -1,0 +1,204 @@
+<!-- Code from d3-graph-gallery.com -->
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<!-- Load d3.js and the geo projection plugin -->
+<script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-geo@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-array@3"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+<!-- Create an element where the map will take place -->
+<svg height="680" id="my_dataviz" width="1080"></svg>
+
+
+<script>
+
+    // The svg
+    var svg = d3.select("svg"),
+        width = svg.attr("width"),
+        height = svg.attr("height");
+
+    // Map and projection
+    var projection = d3.geoMercator()
+        .center([0, 20])                // GPS of location to zoom on
+        .scale(100)                       // This is like the zoom
+        .translate([width / 2, height / 2])
+
+    var path = d3.geoPath().projection(projection)
+
+    d3.queue()
+        .defer(d3.json, "Data/countries.geojson") // dataGeo
+        .defer(d3.csv, "Data/enhanceData/Lang.csv") // data: Position of circles
+        // hoemlat, homelon, homecontinent, n
+        .await(ready);
+
+    // all tasks finished run ready
+
+    function ready(error, dataGeo, data) {
+
+        // Create a color scale
+        var allContinent = d3.map(data, function (d) {
+            return (d.Family_ID)
+        }).keys()
+        // return all keys(continent) list
+
+        var color = d3.scaleOrdinal()
+            // continent to color
+            .domain(allContinent)
+            .range(["#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#ffffff", "#6a3d9a", "#ffff99", "#b15928"]);
+
+        // Add a scale for bubble size
+        var valueExtent = d3.extent(data, function (d) {
+            // calculate bubble size and output max and min
+            return +d.n;
+        })
+        var size = d3.scaleSqrt()
+            .domain(valueExtent)  // What's in the data
+            .range([1, 50])  // Size in pixel
+
+        let mouseOver = function (d) {
+            d3.selectAll(".Country")
+                .transition()
+                .duration(200)
+                .style("opacity", .5)
+            d3.select(this)
+                .transition()
+                .duration(200)
+                .style("opacity", .8)
+                .style("color", "#0099ff")
+        }
+
+        let mouseLeave = function (d) {
+            d3.selectAll(".Country")
+                .transition()
+                .duration(100)
+                .style("opacity", .8)
+            d3.select(this)
+                .transition()
+                .duration(200)
+        }
+
+        // Draw the map
+
+        svg.append("g")
+            .selectAll("path")
+            .data(dataGeo.features)
+            .enter()
+            .append("path")
+            .attr("fill", "#b8b8b8")
+            .attr("d", path)
+            .attr("class", function(d) {return "Country"})
+            .style("stroke", "#0099ff")
+            .style("stroke-width", 0.5)
+            .style("opacity", .3)
+            .on("mouseover", mouseOver )
+            .on("mouseleave", mouseLeave )
+
+        svg
+            .selectAll("myCircles")
+            .data(data)
+            .enter()
+            .append("circle")
+            .attr("cx", function (d) {
+                return projection([+d.Lanlon, +d.Lanlat])[0]
+            })
+            .attr("cy", function (d) {
+                return projection([+d.Lanlon, +d.Lanlat])[1]
+            })
+            .attr("r", 1)
+            .attr("class", function(d) {return "Circle"})
+            .style("fill", function (d) {
+                return color(d.Family_ID)
+            })
+            .attr("stroke", "none")
+            .attr("stroke-width", 1)
+            .attr("fill-opacity", .4)
+
+
+        // Add circles:
+        // svg
+        //     .selectAll("myCircles")
+        //     .data(data.sort(function (a, b) {
+        //         return +b.n - +a.n
+        //     }).filter(function (d, i) {
+        //         return i < 1000
+        //     }))
+        //     .enter()
+        //     .append("circle")
+        //     .attr("cx", function (d) {
+        //         return projection([+d.homelon, +d.homelat])[0]
+        //     })
+        //     .attr("cy", function (d) {
+        //         return projection([+d.homelon, +d.homelat])[1]
+        //     })
+        //     .attr("r", function (d) {
+        //         return size(+d.n)
+        //     })
+        //     .style("fill", function (d) {
+        //         return color(d.homecontinent)
+        //     })
+        //     .attr("stroke", function (d) {
+        //         if (d.n > 2000) {
+        //             return "black"
+        //         } else {
+        //             return "none"
+        //         }
+        //     })
+        //     .attr("stroke-width", 1)
+        //     .attr("fill-opacity", .4)
+
+
+        // Add title and explanation
+        svg
+            .append("text")
+            .attr("text-anchor", "end")
+            .style("fill", "black")
+            .attr("x", width)
+            .attr("y", height - 30)
+            .attr("width", 90)
+            .html("Languages Distrubution Around the World")
+            .style("font-size", 10)
+
+
+        // --------------- //
+        // ADD LEGEND //
+        // --------------- //
+
+        // Add legend: segments
+        svg
+            .selectAll("legend")
+            .data(valuesToShow)
+            .enter()
+            .append("line")
+            .attr('x1', function (d) {
+                return xCircle + size(d)
+            })
+            .attr('x2', xLabel)
+            .attr('y1', function (d) {
+                return height - size(d)
+            })
+            .attr('y2', function (d) {
+                return height - size(d)
+            })
+            .attr('stroke', 'black')
+            .style('stroke-dasharray', ('2,2'))
+
+        // Add legend: labels
+        svg
+            .selectAll("legend")
+            .data(valuesToShow)
+            .enter()
+            .append("text")
+            .attr('x', xLabel)
+            .attr('y', function (d) {
+                return height - size(d)
+            })
+            .text(function (d) {
+                return d
+            })
+            .style("font-size", 10)
+            .attr('alignment-baseline', 'middle')
+    }
+
+</script>
