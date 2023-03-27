@@ -30,6 +30,14 @@
     font-size: 3px;
     position: absolute;
 }
+.highlighted {
+  fill: dimgrey;
+}
+
+.selectable.highlighted {
+  fill: firebrick;
+}
+
 </style>
 
 <script>
@@ -55,7 +63,7 @@
             .style("opacity", 0)
 
     d3.queue()
-        .defer(d3.json, "Data/countries.geojson") // dataGeo
+        .defer(d3.json, "Data/world.geojson") // dataGeo
         .defer(d3.csv, "Data/enhanceData/Lang.csv") // data: Position of circles
         // hoemlat, homelon, homecontinent, n
         .await(ready);
@@ -65,14 +73,15 @@
     function ready(error, dataGeo, data) {
 
         // Create a color scale
-        var allContinent = d3.map(data, function (d) {
+        var allFamily = d3.map(data, function (d) {
             return (d.Family_ID)
         }).keys()
         // return all keys(continent) list
 
         var color = d3.scaleOrdinal()
             // continent to color
-            .domain(allContinent)
+            .domain(allFamily)
+            // .range(d3.schemeSet3)
             .range([
                 "#228B22", "#0401E3", "#FF4500", "#00FF00", "#20FF7F",
                 "#FF6347", "#FF00FF", "#7CFC00", "#08A1FF", "#FFA500",
@@ -102,6 +111,35 @@
                 .style("opacity", 0)
         }
 
+        var prevElem, prevColour;
+
+        let click = function (d) {
+            var LocCountries = d.Countries.split(";")
+            var allData = dataGeo.features
+            var selectedCountry = []
+            for (i in LocCountries){
+                for (co in allData){
+                    // console.log(allData[co].properties.ISO_A3)
+                    if (LocCountries[i] == allData[co].id){
+                        selectedCountry.push(allData[co])
+                    }
+                }
+            }
+            console.log(selectedCountry)
+            svg
+                .selectAll("path")
+                .data(dataGeo.features)
+                .attr("fill", "#b8b8b8")
+                .attr("d", path)
+                .style("opacity", .3);
+            svg
+                .selectAll("path")
+                .data(selectedCountry)
+                .attr("fill", "#FF0000")
+                .attr("d", path)
+                .style("opacity", .7);
+        }
+
         // Draw the map
 
         svg.append("g")
@@ -115,9 +153,9 @@
             .style("stroke", "#0099ff")
             .style("stroke-width", 0.5)
             .style("opacity", .3)
-            // .on("mouseover", mouseOver )
+            // .on("mouseover", mouseOver)
             // .on("mousemove", mouseMove)
-            // .on("mouseleave", mouseLeave )
+            // .on("mouseleave", mouseLeave)
 
         svg
             .selectAll("myCircles")
@@ -144,9 +182,10 @@
                 .attr("stroke", "none")
                 .attr("stroke-width", 1)
                 .attr("fill-opacity", .4)
-            .on("mouseover", mouseOver )
+            .on("mouseover", mouseOver)
             .on("mousemove", mouseMove)
-            .on("mouseleave", mouseLeave )
+            .on("mouseleave", mouseLeave)
+            .on("click", click)
 
         // Add title and explanation
         svg
