@@ -13,6 +13,10 @@
 <!-- Create an element where the map will take place -->
 <body>
 <div id="my_dataviz"></div>
+<select id="selectButton"></select>
+<input type="range" name="mySlider" id=yearSlider min="2000" max="2014" value="2000" step="1">
+<label id="year"></label>
+<!--<select id="yearButton"></select>-->
 </body>
 
 
@@ -30,13 +34,6 @@
     font-size: 3px;
     position: absolute;
 }
-.highlighted {
-  fill: dimgrey;
-}
-
-.selectable.highlighted {
-  fill: firebrick;
-}
 
 </style>
 
@@ -47,13 +44,14 @@
     var svg = d3.select("#my_dataviz")
             .append("svg")
             .attr("width", width)
-            .attr("height", height);
+            .attr("height", height)
+            .call(d3.zoom().on("zoom", zoomed));
 
     // Map and projection
     var projection = d3.geoMercator()
         .center([0, 20])                // GPS of location to zoom on
         .scale(200)                       // This is like the zoom
-        .translate([width / 2, height / 2])
+        .translate([width/2 , height/2 ])
 
     var path = d3.geoPath().projection(projection)
 
@@ -62,18 +60,35 @@
             .attr("class", "tooltip")
             .style("opacity", 0)
 
+    const indicators  = ["Adult literacy rate, population 15+ years, both sexes (%)",
+        "GDP at market prices (current US$)",
+        "GDP per capita (current US$)",
+        "GNI (current US$)",
+        "Government expenditure on education as % of GDP (%)",
+        "Internet users (per 100 people)",
+        "Population, total"]
+
+    const year = ["2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009",
+                  "2010", "2011", "2012", "2013", "2014"]
+
+
     d3.queue()
         .defer(d3.json, "Data/world.geojson") // dataGeo
-        .defer(d3.csv, "Data/enhanceData/Lang.csv") // data: Position of circles
-        // hoemlat, homelon, homecontinent, n
+        .defer(d3.csv, "Data/enhanceData/Lang.csv") // dataLang: Position of circles
+        .defer(d3.csv, "Data/enhanceData/EdStatsNew.csv")  // EdStats
         .await(ready);
+
+    function zoomed() {
+        // mapLayer is a g element
+        svg.attr("transform", d3.event.transform)
+    }
 
     // all tasks finished run ready
 
-    function ready(error, dataGeo, data) {
+    function ready(error, dataGeo, dataLang, dataEd) {
 
         // Create a color scale
-        var allFamily = d3.map(data, function (d) {
+        var allFamily = d3.map(dataLang, function (d) {
             return (d.Family_ID)
         }).keys()
         // return all keys(continent) list
@@ -94,6 +109,80 @@
                 "#FF8C00", "#8070AD", "#87CEEB", "#ADFF2F", "#00FA9A",
             ]);
 
+        d3.select("#selectButton")
+            .selectAll('myOptions')
+            .data(indicators)
+            .enter()
+            .append('option')
+            .text(function (d) { return d; }) // text showed in the menu
+            .attr("value", function (d) { return d; }) // corresponding value returned by the button
+
+        // A function that update the chart
+        function update(selectedGroup, allData, y) {
+            var indiData = dataEd.filter(item => item.IndicatorName == selectedGroup)
+            var countryIndi = {}
+            for (i in indiData){
+                if (indiData[i][y] != "NaN"){
+                    countryIndi[indiData[i]["CountryCode"]] = +indiData[i][y]
+                }
+            }
+            var r = Object.values(countryIndi)
+            console.log(r)
+            var LocCountries = Object.keys(countryIndi)
+            var selectedCountry = allData.filter(item => LocCountries.includes(item.id))
+            var min = d3.min(r)
+            var max = d3.max(r)
+            if (min > max){
+                console.log("____________ERROR___________")
+            }
+            console.log(min.toString(), max.toString())
+            const myColor = d3.scaleLinear()
+                .domain([min,max])
+                .range(["white", "red"]);
+            console.log(myColor(min), myColor(max))
+            svg.selectAll("path")
+                .attr("fill", function (d) {
+                    if (selectedCountry.includes(d)) {
+                         return myColor(countryIndi[d.id]);
+                     } else {
+                         return "#b8b8b8";
+                     }
+                })
+                .style("opacity", function (d) {
+                    if (selectedCountry.includes(d)) {
+                         return 1;
+                     } else {
+                         return .3;
+                     }
+                })
+        }
+
+        d3.select("#selectButton").on("change", function(event,d) {
+            // recover the option that has been chosen
+            const selectedOption = d3.select(this).property("value")
+            // run the updateChart function with this selected option
+            if (d3.select("#yearSlider").property("value")){
+                var ye = d3.select("#yearSlider").property("value")
+                update(indi=selectedOption, dataGeo.features, y=ye)
+            }
+            else {
+                update(indi=selectedOption, dataGeo.features, y="2000")
+            }
+        })
+
+        d3.select("#yearSlider").on("change", function(d){
+            yearValue = this.value
+            document.getElementById('year').textContent = yearValue;
+            if (d3.select("#selectButton").property("value")){
+                var indic = d3.select("#selectButton").property("value")
+                update(indi=indic, dataGeo.features, y=yearValue)
+            }
+            else {
+                update(indi="Adult literacy rate, population 15+ years, both sexes (%)", dataGeo.features, y=yearValue)
+            }
+        })
+
+
         let mouseOver = function (d) {
             Tooltip
                 .style("opacity", 0.8)
@@ -111,33 +200,24 @@
                 .style("opacity", 0)
         }
 
-        var prevElem, prevColour;
-
-        let click = function (d) {
-            var LocCountries = d.Countries.split(";")
-            var allData = dataGeo.features
-            var selectedCountry = []
-            for (i in LocCountries){
-                for (co in allData){
-                    // console.log(allData[co].properties.ISO_A3)
-                    if (LocCountries[i] == allData[co].id){
-                        selectedCountry.push(allData[co])
-                    }
-                }
-            }
-            console.log(selectedCountry)
-            svg
-                .selectAll("path")
-                .data(dataGeo.features)
-                .attr("fill", "#b8b8b8")
-                .attr("d", path)
-                .style("opacity", .3);
-            svg
-                .selectAll("path")
-                .data(selectedCountry)
-                .attr("fill", "#FF0000")
-                .attr("d", path)
-                .style("opacity", .7);
+        function circleClick(Countries, allData) {
+            var LocCountries = Countries.split(";")
+            var selectedCountry = allData.filter(item => LocCountries.includes(item.id))
+            svg.selectAll("path")
+                .attr("fill", function(d) {
+                     if (selectedCountry.includes(d)) {
+                         return "#0CCCEE";
+                     } else {
+                         return "#b8b8b8";
+                     }
+                })
+                .style("stroke-width", function (d) {
+                    if (selectedCountry.includes(d)) {
+                         return 2;
+                     } else {
+                         return 0.5;
+                     }
+                })
         }
 
         // Draw the map
@@ -147,19 +227,17 @@
             .data(dataGeo.features)
             .enter()
             .append("path")
+
             .attr("fill", "#b8b8b8")
             .attr("d", path)
             .attr("class", function(d) {return "Country"})
             .style("stroke", "#0099ff")
             .style("stroke-width", 0.5)
             .style("opacity", .3)
-            // .on("mouseover", mouseOver)
-            // .on("mousemove", mouseMove)
-            // .on("mouseleave", mouseLeave)
 
         svg
             .selectAll("myCircles")
-            .data(data)
+            .data(dataLang)
             .enter()
             .append("circle")
                 .attr("cx", function (d) {
@@ -185,7 +263,10 @@
             .on("mouseover", mouseOver)
             .on("mousemove", mouseMove)
             .on("mouseleave", mouseLeave)
-            .on("click", click)
+            .on("click", function (d) {
+                circleClick(d.Countries, dataGeo.features)
+            })
+
 
         // Add title and explanation
         svg
