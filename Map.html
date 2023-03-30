@@ -12,7 +12,7 @@
 
 <!-- Create an element where the map will take place -->
 <body>
-<h1 align="center" id="title">Language Distribution & Economy & Education Visualization</h1>
+<p align="center" id="title">Language Distribution & Economy & Education Visualization</p>
 <div id="my_dataviz"></div>
 <select id="selectButton"></select>
 <label id="year">2000</label>
@@ -133,11 +133,16 @@ body{
     function ready(error, dataGeo, dataLang, dataEd) {
 
         // Create a color scale
-        var allFamily = d3.map(dataLang, function (d) {
-            return (d.Family_ID)
-        }).keys()
-        // return all keys(continent) list
 
+        const allFamily = new Set()
+        for (item in dataLang){
+            var fm = dataLang[item].Family_ID
+            if (fm != "" || fm != "undefined") {
+                allFamily.add(fm)
+            }
+        }
+        // return all keys(continent) list
+        console.log(allFamily)
         var color = d3.scaleOrdinal()
             // continent to color
             .domain(allFamily)
@@ -322,13 +327,52 @@ body{
                 .attr("stroke", "none")
                 .attr("stroke-width", 1)
                 .attr("fill-opacity", .4)
-            .on("mouseover", mouseOver)
-            .on("mousemove", mouseMove)
-            .on("mouseleave", mouseLeave)
-            .on("click", function (d) {
-                circleClick(d.Countries, dataGeo.features)
-            })
+                .on("mouseover", mouseOver)
+                .on("mousemove", mouseMove)
+                .on("mouseleave", mouseLeave)
+                .on("click", function (d) {
+                    circleClick(d.Countries, dataGeo.features)
+                })
 
+        var data_legend = [
+            {"name": "Low",
+             "color": "white"},
+            {"name": "High",
+             "color": "red"},
+            {"name": "No Data",
+             "color": "#b8b8b8"}
+        ]
+
+        var legend = svg.selectAll(".legend")
+            .data(data_legend)
+            .enter().append("g")
+            .attr("class", "legend")
+            .attr("transform", function(d, i) { return "translate(-30," + (i * 20) + ")"; });
+
+
+        //绘制文字后方的颜色框或线
+        legend.append("rect")
+            .attr("x", width - 25) //width是svg的宽度，x属性用来调整位置
+            // .attr("x", (width / 160) * 157)
+            //或者可以用width的分数来表示，更稳定一些，这是我试出来的，下面同
+            .attr("y", 8)
+            .attr("width", 40)
+            .attr("stroke", "black")
+            .attr("stroke-width", 0.7)
+            .attr("height", 10) //设低一些就是线，高一些就是面，很好理解
+            .style("fill", function(d){
+                return d.color
+            });
+
+        //绘制图例文字
+        legend.append("text")
+            .attr("x", width - 30)
+            // .attr("x", (width / 40) * 39)
+            .attr("y", 15)
+            .style("text-anchor", "end") //样式对齐
+            .text(function(d) {
+                return d.name;
+            });
 
     }
 
