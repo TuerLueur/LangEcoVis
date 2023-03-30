@@ -12,10 +12,13 @@
 
 <!-- Create an element where the map will take place -->
 <body>
+<h1 align="center" id="title">Language Distribution & Economy & Education Visualization</h1>
 <div id="my_dataviz"></div>
 <select id="selectButton"></select>
-<input type="range" name="mySlider" id=yearSlider min="2000" max="2014" value="2000" step="1">
-<label id="year"></label>
+<label id="year">2000</label>
+<input type="range" id=yearSlider min="2000" max="2014" value="2000" step="1">
+<button type="button" id="start">start</button>
+<button type="button" id="stop">stop</button>
 <!--<select id="yearButton"></select>-->
 </body>
 
@@ -25,21 +28,63 @@
     stroke: black;
     stroke-width: 1px;
 }
+body{
+    background: floralwhite;
+    font-family: "Apple LiSung";
+}
 .tooltip{
     opacity: 0;
     background-color: white;
     border: 1px solid;
     border-radius: 5px;
-    padding: 3px;
-    font-size: 3px;
+    padding: 5px;
+    font-size: 20px;
     position: absolute;
+}
+.my_dataviz{
+    display: flex;
+    text-align: center;
+}
+.svg{
+    margin: auto;
+}
+
+#title{
+    color: #383838;
+    font-size: 32px;
+    font-family: "New York";
+    margin: 30px auto;
+}
+
+#selectButton{
+    margin: 5px 50px 5px 300px;
+    padding: auto 10px;
+    font-size: 16px;
+}
+
+#yearSlider{
+    margin: 30px auto 10px;
+}
+
+#year{
+    font-size: 18px;
+    opacity: .7;
+    color: gray;
+    margin: auto;
+}
+
+#start{
+    margin: 20px 10px;
+}
+#stop{
+    margin: 20px auto;
 }
 
 </style>
 
 <script>
 
-    var width = 1080, height = 680
+    var width = 1600, height = 700
     // The svg
     var svg = d3.select("#my_dataviz")
             .append("svg")
@@ -66,7 +111,7 @@
         "GNI (current US$)",
         "Government expenditure on education as % of GDP (%)",
         "Internet users (per 100 people)",
-        "Population, total"]
+        "Duration of compulsory education (years)"]
 
     const year = ["2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009",
                   "2010", "2011", "2012", "2013", "2014"]
@@ -97,17 +142,14 @@
             // continent to color
             .domain(allFamily)
             // .range(d3.schemeSet3)
-            .range([
-                "#228B22", "#0401E3", "#FF4500", "#00FF00", "#20FF7F",
-                "#FF6347", "#FF00FF", "#7CFC00", "#08A1FF", "#FFA500",
-                "#FF5733", "#1E90FF", "#FFD700", "#8001BF", "#00CED1",
-                "#1B0000", "#2FC0CB", "#3F69B4", "#C08080", "#A00080",
-                "#8B0000", "#FFC0CB", "#FF69B4", "#F08080", "#000080",
-                "#E9967A", "#FFB347", "#F0E68C", "#E6E6FA", "#7B68EE",
-                "#008080", "#800080", "#FF1493", "#800F30", "#008000",
-                "#FFB6C1", "#DC143C", "#8FBC8F", "#FFDAB9", "#4B0082",
-                "#FF8C00", "#8070AD", "#87CEEB", "#ADFF2F", "#00FA9A",
-            ]);
+            .range(
+                // ["#FF6347", "#FF00FF", "#7CFC00", "#08A1FF", "#FFA5C0",
+                // "#FF5733", "#1E902F", "#FFD700", "#8001BF", "#00CED1",
+                // "#1B0000", "#2FC0CB", "#3F69B4", "#C08080", "#A00080",
+                // "#8B0000", "#FFC0CB", "#FF69B4", "#F08080", "#000080",
+                // "#FFB6C1", "#DC143C", "#8FBC8F", "#FFDAB9", "#4B0082",
+                // "#FF8C00", "#8070AD", "#87CEEB", "#ADFF2F", "#00FA9A",]
+            ["#4e79a7","#f28e2c","#e15759","#76b7b2","#59a14f","#edc949","#af7aa1","#ff9da7","#9c755f","#bab0ab"]);
 
         d3.select("#selectButton")
             .selectAll('myOptions')
@@ -127,19 +169,14 @@
                 }
             }
             var r = Object.values(countryIndi)
-            console.log(r)
+            // console.log(r)
             var LocCountries = Object.keys(countryIndi)
             var selectedCountry = allData.filter(item => LocCountries.includes(item.id))
             var min = d3.min(r)
             var max = d3.max(r)
-            if (min > max){
-                console.log("____________ERROR___________")
-            }
-            console.log(min.toString(), max.toString())
             const myColor = d3.scaleLinear()
                 .domain([min,max])
                 .range(["white", "red"]);
-            console.log(myColor(min), myColor(max))
             svg.selectAll("path")
                 .attr("fill", function (d) {
                     if (selectedCountry.includes(d)) {
@@ -152,7 +189,7 @@
                     if (selectedCountry.includes(d)) {
                          return 1;
                      } else {
-                         return .3;
+                         return 0.5;
                      }
                 })
         }
@@ -173,14 +210,32 @@
         d3.select("#yearSlider").on("change", function(d){
             yearValue = this.value
             document.getElementById('year').textContent = yearValue;
+            var indic = ""
             if (d3.select("#selectButton").property("value")){
-                var indic = d3.select("#selectButton").property("value")
-                update(indi=indic, dataGeo.features, y=yearValue)
+                indic = d3.select("#selectButton").property("value")
             }
             else {
-                update(indi="Adult literacy rate, population 15+ years, both sexes (%)", dataGeo.features, y=yearValue)
+                indic="Adult literacy rate, population 15+ years, both sexes (%)"
             }
+            update(indi=indic, dataGeo.features, y=yearValue)
         })
+
+        var myTimer;
+        d3.select("#start").on("click", function() {
+            clearInterval (myTimer);
+            myTimer = setInterval (function() {
+                var b= d3.select("#yearSlider");
+                var t = (+b.property("value") + 1) % (+b.property("max") + 1);
+                if (t == 0) { t = +b.property("min"); }
+                b.property("value", t);
+                document.getElementById('year').textContent = t
+                update(indi=d3.select("#selectButton").property("value"), dataGeo.features, y=t);
+            }, 500);
+        });
+
+        d3.select("#stop").on("click", function() {
+        clearInterval (myTimer);
+        });
 
 
         let mouseOver = function (d) {
@@ -193,6 +248,7 @@
                 .html("Name: " + d.Name + "<br>" + "Family: " + d.Family_ID + "<br>" + "Language: " + d.Language_ID )
                 .style("top", (event.layerY + 16) + "px")
                 .style("left", (event.layerX + 16) + "px");
+
         }
 
         let mouseLeave = function (d) {
@@ -215,9 +271,10 @@
                     if (selectedCountry.includes(d)) {
                          return 2;
                      } else {
-                         return 0.5;
+                         return 0.7;
                      }
                 })
+                .style("opacity", 0.5)
         }
 
         // Draw the map
@@ -232,8 +289,8 @@
             .attr("d", path)
             .attr("class", function(d) {return "Country"})
             .style("stroke", "#0099ff")
-            .style("stroke-width", 0.5)
-            .style("opacity", .3)
+            .style("stroke-width", 0.7)
+            .style("opacity", 0.5)
 
         svg
             .selectAll("myCircles")
@@ -248,14 +305,19 @@
                 })
                 .attr("r", function (d) {
                     var temp = Math.sqrt(d.Population)
-                    if (temp > 1)
+                    if (temp > 1.5)
                         return temp;
                     else
-                        return 1;
+                        return 1.5;
                 })
                 .attr("class", function(d) {return "Circle"})
                 .style("fill", function (d) {
-                    return color(d.Family_ID)
+                    if (d.Last_Year_Of_Documentation == "NaN") {
+                        return color(d.Family_ID)
+                    }
+                    else {
+                        return "black";
+                    }
                 })
                 .attr("stroke", "none")
                 .attr("stroke-width", 1)
@@ -268,38 +330,6 @@
             })
 
 
-        // Add title and explanation
-        svg
-            .append("text")
-            .attr("text-anchor", "end")
-            .style("fill", "black")
-            .attr("x", width)
-            .attr("y", height - 30)
-            .attr("width", 90)
-            .html("Languages Distrubution Around the World")
-            .style("font-size", 10)
-
-
-        // --------------- //
-        // ADD LEGEND //
-        // --------------- //
-
-
-        // Add legend: labels
-        svg
-            .selectAll("legend")
-            .data(valuesToShow)
-            .enter()
-            .append("text")
-            .attr('x', xLabel)
-            .attr('y', function (d) {
-                return height - size(d)
-            })
-            .text(function (d) {
-                return d
-            })
-            .style("font-size", 10)
-            .attr('alignment-baseline', 'middle')
     }
 
 </script>
