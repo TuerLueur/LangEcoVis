@@ -12,13 +12,16 @@
 
 <!-- Create an element where the map will take place -->
 <body>
-<p align="center" id="title">Language Distribution & Economy & Education Visualization</p>
+<p align="center" id="title">Language Diversity and Development: An Interactive Visual Exploration</p>
 <div id="my_dataviz"></div>
 <select id="selectButton"></select>
 <label id="year">2000</label>
 <input type="range" id=yearSlider min="2000" max="2014" value="2000" step="1">
 <button type="button" id="start">start</button>
 <button type="button" id="stop">stop</button>
+<button id="zoom" onclick="zoomIn()">+</button>
+<button id="zoom" onclick="zoomOut()">-</button>
+<button id="zoom" onclick="resetZoom()">Reset zoom</button>
 <!--<select id="yearButton"></select>-->
 </body>
 
@@ -44,6 +47,7 @@ body{
 .my_dataviz{
     display: flex;
     text-align: center;
+    z-index: 1;
 }
 .svg{
     margin: auto;
@@ -54,16 +58,19 @@ body{
     font-size: 32px;
     font-family: "New York";
     margin: 30px auto;
+    z-index: 2;
 }
 
 #selectButton{
     margin: 5px 50px 5px 300px;
     padding: auto 10px;
     font-size: 16px;
+    z-index: 2;
 }
 
 #yearSlider{
     margin: 30px auto 10px;
+    z-index: 2;
 }
 
 #year{
@@ -71,13 +78,23 @@ body{
     opacity: .7;
     color: gray;
     margin: auto;
+    z-index: 2;
 }
 
 #start{
-    margin: 20px 10px;
+    margin: auto 10px;
+    z-index: 2;
 }
 #stop{
-    margin: 20px auto;
+    margin: auto 30px auto 0px;
+    z-index: 2;
+}
+#zoom{
+    margin: auto 5px;
+    z-index: 2;
+}
+#Circle{
+    z-index: 0;
 }
 
 </style>
@@ -85,12 +102,16 @@ body{
 <script>
 
     var width = 1600, height = 700
+    let zoom = d3.zoom()
+        .scaleExtent([1, 5])
+        .on('zoom', handleZoom);
+
     // The svg
     var svg = d3.select("#my_dataviz")
             .append("svg")
             .attr("width", width)
             .attr("height", height)
-            .call(d3.zoom().on("zoom", zoomed));
+            .call(zoom)
 
     // Map and projection
     var projection = d3.geoMercator()
@@ -105,13 +126,16 @@ body{
             .attr("class", "tooltip")
             .style("opacity", 0)
 
-    const indicators  = ["Adult literacy rate, population 15+ years, both sexes (%)",
-        "GDP at market prices (current US$)",
-        "GDP per capita (current US$)",
-        "GNI (current US$)",
-        "Government expenditure on education as % of GDP (%)",
-        "Internet users (per 100 people)",
-        "Duration of compulsory education (years)"]
+    const indicators  = ['GDP at market prices (current US$)',
+                      'GDP per capita (current US$)',
+                      'GNI (current US$)',
+                      'GNI per capita, Atlas method (current US$)',
+                      'Internet users (per 100 people)',
+                      'Government expenditure on education as % of GDP (%)',
+                      'Duration of compulsory education (years)',
+                      'Adult literacy rate, population 15+ years, both sexes (%)',
+                      'PIAAC: Mean Adult Literacy Proficiency. Total',
+                      'PIAAC: Mean Adult Numeracy Proficiency. Total']
 
     const year = ["2000", "2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009",
                   "2010", "2011", "2012", "2013", "2014"]
@@ -123,10 +147,34 @@ body{
         .defer(d3.csv, "Data/enhanceData/EdStatsNew.csv")  // EdStats
         .await(ready);
 
-    function zoomed() {
-        // mapLayer is a g element
-        svg.attr("transform", d3.event.transform)
+    function initZoom() {
+        d3.select('svg')
+            .call(zoom);
     }
+
+    function handleZoom(e) {
+        d3.select('svg g')
+            svg.attr("transform", d3.zoomTransform(this))
+    }
+
+    function zoomIn() {
+        d3.select('svg')
+            .transition()
+            .call(zoom.scaleBy, 2);
+    }
+
+    function zoomOut() {
+        d3.select('svg')
+            .transition()
+            .call(zoom.scaleBy, 0.5);
+    }
+
+    function resetZoom() {
+        d3.select('svg')
+            .transition()
+            .call(zoom.scaleTo, 1);
+    }
+
 
     // all tasks finished run ready
 
@@ -141,6 +189,9 @@ body{
                 allFamily.add(fm)
             }
         }
+
+        initZoom();
+
         // return all keys(continent) list
         console.log(allFamily)
         var color = d3.scaleOrdinal()
@@ -220,7 +271,7 @@ body{
                 indic = d3.select("#selectButton").property("value")
             }
             else {
-                indic="Adult literacy rate, population 15+ years, both sexes (%)"
+                indic='GDP at market prices (current US$)'
             }
             update(indi=indic, dataGeo.features, y=yearValue)
         })
@@ -253,7 +304,6 @@ body{
                 .html("Name: " + d.Name + "<br>" + "Family: " + d.Family_ID + "<br>" + "Language: " + d.Language_ID )
                 .style("top", (event.layerY + 16) + "px")
                 .style("left", (event.layerX + 16) + "px");
-
         }
 
         let mouseLeave = function (d) {
@@ -298,7 +348,7 @@ body{
             .style("opacity", 0.5)
 
         svg
-            .selectAll("myCircles")
+            .selectAll("circle")
             .data(dataLang)
             .enter()
             .append("circle")
